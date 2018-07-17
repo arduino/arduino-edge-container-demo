@@ -1,37 +1,83 @@
-# Prima Iterazione
+# First Iteration
 
-È stato installato [Raspbian Stretch Lite](https://www.raspberrypi.org/downloads/raspbian/ "Download Raspbian") su un Raspberry Pi 3b+
+In this tutorial I'll be using [Raspbian Stretch Lite](https://www.raspberrypi.org/downloads/raspbian/ "Download Raspbian"), which is the newest version of Raspbian at the current time, installed on Raspberry Pi 3b+. I choose the Lite version because I don't need the GUI.
+It's easier to work on it if you have SSH enabled. To achieve that goal you have to create an empty file (and without extension) named **SSH** and put it in the *boot* partition of the microSD card.
 
-È stata abilitata l'SSH sul raspberry creando un file vuoto con nome **SSH** nella partizione *boot* della microSD.
+During the first powerup I connected the raspberry pi to my pc using an ethernet cable. I configured my laptop to share the internet connection through the ethernet interface.
+For me, working this way, was easier because it's more simple to obtain the ip address of the raspberry. However it's also possible to connect to the internet using wi-fi, but you have to use display and keyboard.
 
-Alla prima accensione il raspberry è stato collegato tramite cavo ethernet al pc, che è stato configurato per condividere la connessione su questa interfaccia. Ho sempre lavorato in questo modo perchè mi è stato più semplice conoscere l'ip del raspberry, è comunque possibile lavorare collegandolo su wi-fi, ma è necessario uno schermo e una tastiera.
-
-È stato possibile quindi controlare il raspberry tramite SSH con il comando
-
-```bash
-$ ssh pi@<ip address>
-```
-
-Prima di tutto è necessario verificare che siano installate le librerie GPIO per poter interfacciare Python con i pin del raspberry e quindi con il tasto.
-
+If you know the Raspberry's IP,it's possible to control it (in a bash window) using SSH with the command:
 ``` bash
+$ ssh pi@<ip_address_raspi>
+```
+The default log-in informations are: user: `pi`, password `raspberry`.
+
+First of all it's mandatory to check if the GPIO libraries for Python are already installed/updated.
+``` bash
+$ sudo apt-get update
 $ sudo apt-get install python-rpi.gpio python3-rpi.gpio
 ```
 
-Successivamente sono stati scritti due script in python per registrare la pressione del tasto e scrivere un messaggio sul terminale (*pushbutton.py* e *pushbutton_event.py*).
-Il secondo script sfrutta gli eventi associati ai pin GPIO per richiamare una funzione che stampa su terminale.
+Then I wrote two scripts in Python to check the status of a pushbutton (connected to pin 8) and to write a message on the terminal (*pushbutton.py* e *pushbutton_event.py*).
+The second script uses the events related to GPIO pins to call a function which prints the button status on the terminal.
+This is a more complex way, but the most efficient one.
 
-Gli script sono stati copiati sul raspberry tramite *scp*
+One easy way to transfer files (or in this case, scripts) to the Raspberry Pi is using *scp*
 ```bash
-$ scp ~/Documents/pushbutton.py pi@<ip address>
-
+$ scp ~/Documents/pushbutton.py pi@<ip_address_raspi>
+$ scp ~/Documents/pushbutton_event.py pi@<ip_address_raspi>
 ```
 
-I collegamenti del tasto sono stati fatti seguendo questo schema 
+For all the connection I used this scheme:
 ![pin raspberry](https://www.raspberrypi-spy.co.uk/wp-content/uploads/2012/06/Raspberry-Pi-GPIO-Layout-Model-B-Plus-rotated-2700x900.png "Pin Raspberry")
+If you want further information on the GPIO pins you can read something useful [here](https://www.raspberrypi.org/documentation/usage/gpio/, "GPIO documentation")
 
-Gli script possono essere lanciati con il seguente comando
+To run the scripts simply run this command:
 ```bash
 $ python3 pushbutton.py
 ```
+or
+```bash
+$ python3 pushbutton_event.py
+```
 
+---
+# Second Iteration
+
+After installing Raspbian and testing the GPIO pins using Python and a pushbutton, let's add a bit of complexity. Let's add Docker!
+
+Docker will be automatically installed with the Arduino Connector.
+
+If you don't want to use `sudo` when using `docker` you have to create a group *docker* and add your user to the latter:
+```bash
+$ sudo groupadd docker
+$ sudo usermod -aG docker $USER
+```
+
+For our project we need [Node-RED](https://nodered.org/) which is a flow-based developement tool for wiring together hardware devices, APIs and online services as part of the Internet of Things.
+
+We can use this [Node-RED Docker container](https://hub.docker.com/r/nieleyde/rpi-nodered-gpio/) which is already configured for
+ GPIO use.
+To install and run the container you can use the following command:
+
+```bash
+$ docker run -d -p 1880:1880 -v ~/node-red-data:/data --privileged --device /dev/mem --name mynodered nieleyde/rpi-nodered-gpio:latest
+```
+- `run -d nieleyde/rpi-nodered-gpio:latest` This command will download the container from DockerHub and run it in background
+- `-p 1880:1880` This option exposes 1880 port outside the container
+- `-v ~/node-red-data:/data` This option mounts the host’s *~/node-red-data* directory as the user configuration directory inside the container. It's useful to backup *flows.json* file. This file contains the configuration of all flows created in Node-RED browser editor.
+- `--privileged --device /dev/mem` This option allows the container to access Raspberry's GPIO pins
+- `-- name mynodered` This option gives a human readable name to the container
+
+Now we can check the status of the container with `docker ps`, it should be *up*. 
+Furthermore we can stop the container with `docker stop mynodered` and start it with `docker start mynodered`
+
+It's also possible to modify the flow and nodes through Node-RED's browser-based web interface, connecting to this URL:
+`http://<ip_address_raspi>:1880/`
+
+Finally it's also possible to restore the backup of Node-RED's nodes and flows using scp to copy *flows.json* in the folder *node-red-data* created before.
+```bash
+$ scp ~/Documents/flows.json pi@<ip_address_raspi>:~/node-red-data/
+
+```
+The exemple *flows.json* simply reads the value of a GPIO input pin (pin number 8) and prints in the debug tab its value.
