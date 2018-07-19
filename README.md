@@ -119,9 +119,11 @@ $ scp ~/Documents/third_iteration/flows.json pi@<ip_address_raspi>:~/node-red-da
 - Or you can use a simpler solution: open the *flows.json* file and copy all its content to the clipboard, then use Node-RED import function (*toast menu > import > clipboard*).
 
 Your flow shoud look like this:
+
 ![Node-RED flow](docs/flow_email.png "email flow")
 
 To make it work you simply have to add the properties inside the e-mail node (Add the recipient, your email address and your password).
+
 ![email](docs/email_node.png "email properties")
 
 I had some problems using my gmail account. To use my email I had to disable *less secure apps* [here](https://myaccount.google.com/lesssecureapps).
