@@ -18,14 +18,14 @@ $ sudo apt-get update
 $ sudo apt-get install python-rpi.gpio python3-rpi.gpio
 ```
 
-Then I wrote two scripts in Python to check the status of a pushbutton (connected to pin 8) and to write a message on the terminal (*pushbutton.py* e *pushbutton_event.py*).
+Then I wrote two scripts in Python to check the status of a pushbutton (connected to pin 8) and to write a message on the terminal (*pushbutton.py* and *pushbutton_event.py*).
 The second script uses the events related to GPIO pins to call a function which prints the button status on the terminal.
 This is a more complex way, but the most efficient one.
 
 One easy way to transfer files (or in this case, scripts) to the Raspberry Pi is using *scp*
 ```bash
-$ scp ~/Documents/pushbutton.py pi@<ip_address_raspi>
-$ scp ~/Documents/pushbutton_event.py pi@<ip_address_raspi>
+$ scp ~/Documents/first_iteration/pushbutton.py pi@<ip_address_raspi>
+$ scp ~/Documents/first_iteration/pushbutton_event.py pi@<ip_address_raspi>
 ```
 
 For all the connection I used this scheme:
@@ -34,11 +34,11 @@ If you want further information on the GPIO pins you can read something useful [
 
 To run the scripts simply run this command:
 ```bash
-$ python3 pushbutton.py
+$ python3 ~/Documents/first_iteration/pushbutton.py
 ```
 or
 ```bash
-$ python3 pushbutton_event.py
+$ python3 ~/Documents/first_iteration/pushbutton_event.py
 ```
 
 ---
@@ -77,7 +77,7 @@ It's also possible to modify the flow and nodes through Node-RED's browser-based
 
 Finally it's also possible to restore the backup of Node-RED's nodes and flows using scp to copy *flows.json* in the folder *node-red-data* created before.
 ```bash
-$ scp ~/Documents/flows.json pi@<ip_address_raspi>:~/node-red-data/
+$ scp ~/Documents/second_iteration/flows.json pi@<ip_address_raspi>:~/node-red-data/
 
 ```
 The exemple *flows.json* simply reads the value of a GPIO input pin (pin number 8) and prints in the debug tab its value.
