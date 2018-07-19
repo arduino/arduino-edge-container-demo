@@ -95,4 +95,41 @@ It's better to use this container because it's the official one, it's better mai
 
 I had to run it with `--user=root` because in the [dockerfile](https://github.com/node-red/node-red-docker/blob/master/rpi/Dockerfile) of this container, the developers created the user *node-red* which can not access */dev/mem* (to control the GPIO pins). You can find further information about users [here](https://docs.docker.com/engine/reference/run/#user, "Docker Documentation").
 
+---
+# Third Iteration
+
+Our goal in this iteration is to write an Arduino sketch which reads the value of a pushbutton and notifies Node-RED inside the Docker container. The flow in Node-RED has to rework the value recived from the sketch and to send an email to a specified email-address.
+
+For this step there's no need of configuring anything.
+You simply have to import and flash the arduino sketch on the Raspberry Pi using the [Arduino Web Editor](https://create.arduino.cc/editor/, "Arduino Web Editor") and to import the flow in Node-RED.
+
+We can upload it using two different ways:
+- download locally the sketch *pushbutton_http_post.ino* and import it in the editor (*Arduino Web Editor > Sketchbook > Import*).
+- Take the sketch from [here](https://create.arduino.cc/editor/umbobaldi/37776e35-26e8-428b-962f-ba7f4003f3a7/preview) and open it in the web editor.
+Now you can upload the code on your Raspberry Pi.
+
+The sketch simply reads the status of the pushbutton (connected to pin 8) and if it's pressed perform an *HTTP POST* using the bash command `curl`. The request is directed to Node-RED's ip and port.
+
+On Node-RED side we have to import the flow located in *third_iteration* folder.
+- You can do that as described in the second iteration, but coping this new flow:
+```bash
+$ scp ~/Documents/third_iteration/flows.json pi@<ip_address_raspi>:~/node-red-data/
+
+```
+- Or you can use a simpler solution: open the *flows.json* file and copy all its content to the clipboard, then use Node-RED import function (*toast menu > import > clipboard*).
+
+Your flow shoud look like this:
+![Node-RED flow](docs/flow_email.png "email flow")
+
+To make it work you simply have to add the properties inside the e-mail node (Add the recipient, your email address and your password).
+![email](docs/email_node.png "email properties")
+
+I had some problems using my gmail account. To use my email I had to disable *less secure apps* [here](https://myaccount.google.com/lesssecureapps).
+
+Now it's time to deploy the flow and to test it!
+
+
+
+
+
 
