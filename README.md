@@ -70,7 +70,7 @@ $ docker run -d -p 1880:1880 -v ~/node-red-data:/data --privileged --name mynode
 - `-- name mynodered` This option gives a human readable name to the container
 
 Now we can check the status of the container with `docker ps`, it should be *up*. 
-Furthermore we can stop the container with `docker stop mynodered` and start it with `docker start mynodered`
+Furthermore we can stop the container with `docker stop mynodered` and start it again with `docker start mynodered`
 
 It's also possible to modify the flow and nodes through Node-RED's browser-based web interface, connecting to this URL:
 `http://<ip_address_raspi>:1880/`
@@ -130,8 +130,48 @@ I had some problems using my gmail account. To use my email I had to disable *le
 
 Now it's time to deploy the flow and to test it!
 
+---
+# Fourth Iteration
 
+In this iteration we are going to test and try [OpenCV](https://opencv.org/), which is a computer vision library written in *C/C++* and it supports *Python*.
 
+The goal, in this iteration, is to install OpenCV and simply to take a photograph and save it using this library.
+Since it's not an easy task to install it, we can use a *docker container* already built!
+I used [this](https://hub.docker.com/r/sgtwilko/rpi-raspbian-opencv/) one, which comes already compiled for Raspberry Pi and Raspbian Stretch.
 
+To install it I used this command:
+```bash
+$ docker run -it --privileged -v ~/opencv-data:/data --name opencv sgtwilko/rpi-raspbian-opencv:stretch-latest
+```
+The various options used in this command are already described in **second iteration**.
+By the way the option `--privileged` let the container access to all the peripherals connected to our Raspberry, even the webcam/Raspberry Pi Cam.
+Personally I used a generic logitech one ([this](http://support.logitech.com/en_us/product/quickcam-communicate-stx-product)).
 
+Now you should be in the container's bash!
+First of all check if OpenCV is installed by running python interpreter:
+``` bash
+$ python
+Python 2.7.13 (default, Nov 24 2017, 17:33:09) 
+[GCC 6.3.0 20170516] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>>
+```
+And then try to import OpenCV library:
+```
+>>> import cv2
+>>> 
+```
+To exit the interpreter simply use `exit()`.
+Now if everything is working as expected we can proceed and test if everything is ok.
 
+The script I wrote simply take a photo from the webcam and save it in `/data/opencv.png`.
+
+You can copy the script on your raspberry using *scp*
+```bash
+scp ~/Documents/test.py pi@<ip_address_raspi>:~/opencv-data/
+```
+You can open and see the photo if you copy it to your pc:
+```bash
+scp pi@<ip_address_raspi>:~/opencv-data/opencv.png ~/Documents/
+```
+___
