@@ -22,11 +22,18 @@ Then I wrote two scripts in Python to check the status of a pushbutton (connecte
 The second script uses the events related to GPIO pins to call a function which prints the button status on the terminal.
 This is a more complex way, but the most efficient one.
 
-One easy way to transfer files (or in this case, scripts) to the Raspberry Pi is using *scp*
+Let's make a destination directory to save the scripts
 ```bash
-$ scp ~/Documents/first_iteration/pushbutton.py pi@<ip_address_raspi>
-$ scp ~/Documents/first_iteration/pushbutton_event.py pi@<ip_address_raspi>
+$ cd ~
+mkdir python-data
 ```
+
+One easy way to transfer files (or in this case, scripts)from your pc to the Raspberry Pi is using *scp*
+```bash
+$ scp ~/Documents/first_iteration/pushbutton.py ~/Documents/first_iteration/pushbutton_event.py pi@<ip_address_raspi>:~/python-data/
+```
+
+If scp is not working (Permission denied) you have to change ownership of the destination folder in the raspi (`chown pi python-data`).
 
 For all the connection I used this scheme:
 ![pin raspberry](https://www.raspberrypi-spy.co.uk/wp-content/uploads/2012/06/Raspberry-Pi-GPIO-Layout-Model-B-Plus-rotated-2700x900.png "Pin Raspberry")
@@ -147,6 +154,8 @@ The various options used in this command are already described in **second itera
 By the way the option `--privileged` let the container access to all the peripherals connected to our Raspberry, even the webcam/Raspberry Pi Cam.
 Personally I used a generic logitech one ([this](http://support.logitech.com/en_us/product/quickcam-communicate-stx-product)).
 
+Furthermore we can stop the container with `docker stop opencv` and start it again with `docker start -i opencv`. (`-i` attach container’s STDIN)
+
 Now you should be in the container's bash!
 First of all check if OpenCV is installed by running python interpreter:
 ``` bash
@@ -161,17 +170,60 @@ And then try to import OpenCV library:
 >>> import cv2
 >>> 
 ```
+If you don’t get any errors, you can move on to the next part.
 To exit the interpreter simply use `exit()`.
-Now if everything is working as expected we can proceed and test if everything is ok.
 
 The script I wrote simply take a photo from the webcam and save it in `/data/opencv.png`.
 
-You can copy the script on your raspberry using *scp*
+You can copy the script to your raspberry using *scp*
 ```bash
-scp ~/Documents/test.py pi@<ip_address_raspi>:~/opencv-data/
+scp ~/Documents/fourth_iteration/test.py pi@<ip_address_raspi>:~/opencv-data/
 ```
+To run the script simply start the docker container (`docker start -i opencv`),
+move to the correct directory (`cd data/`), and finally run the script with `python test.py`.
+
 You can open and see the photo if you copy it to your pc:
 ```bash
 scp pi@<ip_address_raspi>:~/opencv-data/opencv.png ~/Documents/
 ```
 ___
+
+# Fifth Iteration
+
+In this iteration we are going to do some **Face Detection**!
+If you do not have OpenCV installed on your Raspberry Pi just follow the instruction in the fourth iteration.
+
+Basically Face Detection will detect if a photo contains a face and the position of the face.
+
+Before OpenCV                     | After OpenCV
+:--------------------------------:|:----------------------------------:
+![Before](docs/test.jpg "Before") | ![After](docs/test_ocv.jpg "After")
+
+OpenCV uses a cascade file (an xml file) which contains data to detect objects, in our case it's used for faces. You only have to initialize it in your code.
+OpenCV comes with different cascades built in, for detecting several things such as eyes, hands, legs, animals and so on.
+In this tutorial we are going to use Haar Cascade Classifier,
+It's a machine learning based approach where a cascade function is trained from a lot of positive (images with face) and negative images (images without face). The algorithm is proposed by Paul Viola and Michael Jones.
+Further information [here](https://en.wikipedia.org/wiki/Haar-like_feature)
+
+Next step is to copy the cascade file (`haarcascade_frontalface_alt.xml`) to the Raspberry
+```bash
+scp ~/Documents/fifth_iteration/haarcascade_frontalface_alt.xml pi@<ip_address_raspi>:~/opencv-data/
+```
+Then you can copy some test images to the Raspberry
+```bash
+scp ~/Documents/fifth_iteration/test.jpg pi@<ip_address_raspi>:~/opencv-data/
+```
+The script I wrote simply opens a photo passed as argument, tries to find faces, and saves the image with faces in the same folder.
+You can copy it to the Raspberry with:
+```bash
+scp ~/Documents/fifth_iteration/face_detection.py pi@<ip_address_raspi>:~/opencv-data/
+```
+
+Now everything is configured and you can run the script!
+First you have to start the docker container with `docker start -i opencv`,
+then you can move to the correct directory (`cd data/`), and finally run the script (`python face_detection.py test.jpg`).
+
+You can open and see the photo with faces if you copy it to your pc:
+```bash
+scp pi@<ip_address_raspi>:~/opencv-data/test_ocv.jpg ~/Documents/
+```
