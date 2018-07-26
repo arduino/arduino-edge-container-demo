@@ -1,0 +1,1 @@
+int interval = 15000;void setup() {  CloudSerial.begin(9600); // initialize the monitor of the Arduino Web Editor}void loop() {  System.runShellCommand("docker start face_detection"); //start the docker container with opencv  CloudSerial.println("docker started"); // print on the monitor  delay(interval);}

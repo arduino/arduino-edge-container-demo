@@ -91,7 +91,7 @@ The exemple *flows.json* simply reads the value of a GPIO input pin (pin number 
 
 ### Second Iteration alternative
 
-At the beginning I started using the [official container of Node-RED](https://hub.docker.com/r/nodered/node-red-docker/), instead of the one used in the second iteration, but I was not able to make it work with GPIO integration.
+At the beginning I started using the [official container of Node-RED](https://hub.docker.com/r/nodered/node-red-docker/), instead of the one used in the [Second Iteration](#second-iteration), but I was not able to make it work with GPIO integration.
 
 Finally I succeded. To make it work I used this command:
 ```bash
@@ -118,7 +118,7 @@ Now you can upload the code on your Raspberry Pi.
 The sketch simply reads the status of the pushbutton (connected to pin 8) and if it's pressed perform an *HTTP POST* using the bash command `curl`. The request is directed to Node-RED's ip and port.
 
 On Node-RED side we have to import the flow located in *third_iteration* folder.
-- You can do that as described in the second iteration, but coping this new flow:
+- You can do that as described in the [Second Iteration](#second-iteration), but coping this new flow:
 ```bash
 $ scp ~/Documents/third_iteration/flows.json pi@<ip_address_raspi>:~/node-red-data/
 
@@ -127,11 +127,15 @@ $ scp ~/Documents/third_iteration/flows.json pi@<ip_address_raspi>:~/node-red-da
 
 Your flow shoud look like this:
 
-![Node-RED flow](docs/flow_email.png "email flow")
+<kbd>
+  <img src="docs/flow_email.png">
+</kbd>
 
 To make it work you simply have to add the properties inside the e-mail node (Add the recipient, your email address and your password).
 
-![email](docs/email_node.png "email properties")
+<kbd>
+  <img src="docs/email_node.png">
+</kbd>
 
 I had some problems using my gmail account. To use my email I had to disable *less secure apps* [here](https://myaccount.google.com/lesssecureapps).
 
@@ -150,7 +154,7 @@ To install it I used this command:
 ```bash
 $ docker run -it --privileged -v ~/opencv-data:/data --name opencv sgtwilko/rpi-raspbian-opencv:stretch-latest
 ```
-The various options used in this command are already described in **second iteration**.
+The various options used in this command are already described in [Second Iteration](#second-iteration).
 By the way the option `--privileged` let the container access to all the peripherals connected to our Raspberry, even the webcam/Raspberry Pi Cam.
 Personally I used a generic logitech one ([this](http://support.logitech.com/en_us/product/quickcam-communicate-stx-product)).
 
@@ -191,7 +195,7 @@ ___
 # Fifth Iteration
 
 In this iteration we are going to do some **Face Detection**!
-If you do not have OpenCV installed on your Raspberry Pi just follow the instruction in the fourth iteration.
+If you do not have OpenCV installed on your Raspberry Pi just follow the instruction in the [Fourth Iteration](#fourth-iteration).
 
 Basically Face Detection will detect if a photo contains a face and the position of the face.
 
@@ -227,3 +231,89 @@ You can open and see the photo with faces if you copy it to your pc:
 ```bash
 scp pi@<ip_address_raspi>:~/opencv-data/test_ocv.jpg ~/Documents/
 ```
+
+---
+
+# Sixth Iteration
+
+In this iteration we are going to put together all the previous iterations.
+The Idea:
+- An **Arduino sketch** will run every 15 seconds a shell command to start a docker container.
+- A Docker Container which contains **OpenCV** will run a python script on startup. This script will take a photo using a webcam, will draw in the photo a rectangle around a face (if there is one) and save the image in a docker shared volume with the name *opencv.png* if at least one face is found. After all that the container will stop.
+- In another Docker Container, a flow in **Node-RED**, will watch the shared volume, waiting for changes in the file *opencv.png*. If the file is changed (the photo is overwritten), the flow composes an email (attaching the photo) and sends it.
+
+<kbd>
+  <img src="docs/screenshot_email_ocv.png">
+</kbd>
+
+### Arduino sketch
+
+Let's start with the arduino code.
+For uploading the sketch to the raspberry you can follow [Third Iteration](#third-iteration).
+You can either download it from this repo and import it to [Arduino Web Editor](https://create.arduino.cc/editor/,) or use this [link](https://create-intel.arduino.cc/editor/umbobaldi/2de421c6-dcd8-4327-bdf1-6223e638afd5/preview, "Arduino Start Docker OpenCV")
+
+### Docker container OpenCV
+
+The Docker Container OpenCv part is a bit more complex.
+Fist of all you have to create a docker volume to share data between the two containers:
+``` bash
+docker volume create share
+```
+To check if everything is ok you can check the list of volumes, you shound also see the newly created volume with `docker volume ls`.
+
+As an experiment I created a docker image, to make the procedure simpler, but if you prefer to build the image by yourself you can read [Docker build OpenCV](#docker-build-opencv) part.
+If you have Docker already installed on your Raspberry run this command to download [my image](https://hub.docker.com/r/umbobaldi/opencv_face_detection/):
+
+``` bash
+    docker run -it --privileged -v share:/data --name face_detection umbobaldi/opencv_face_detection:1.0
+```
+- With `-it` you can see a short log and check if everything is ok
+- `-v share:/data` mounts the docker volume *share* and binds it with */data* folder inside the container.
+
+The image is already configured to run on startup a python script which uses OpenCV.
+
+The script:
+- Take a photo from the webcam
+- Does some face detection, likewise described in [Fifth Iteration](#fifth-iteration)
+- Saves the photo (*opencv.png*) in the data folder, which is connected to the shared volume, if at least one face is found. Otherwise nothing is saved.
+When the script finish the execution the docker container is stopped.
+
+### Docker container Node-Red
+
+In the end you can import *flows.json* as described in [Third iteration](#third-iteration).
+Open the file and copy all its content to the clipboard, then use Node-RED import function (*toast menu > import > clipboard*).
+To make it work you simply have to add the properties inside the e-mail node (add the recipient, your email address and your password).
+
+Here's the result:
+
+<kbd>
+  <img src="docs/screenshot_flow_ocv.png">
+</kbd>
+
+This flow:
+- Waits for changes in the file *opencv.png* located in the shared volume. When there is a change it means the old file is overwritten by a newer file, so it's time to send an e-mail.
+- The *delay node* has to filter the input: when the other container overwrites the file the process in not immediate. So the messages have to be limited to one.
+- The *function node* composes the e-mail attaching the photo and writing a proper message.
+- In the end the e-mail is sent by the *e-mail node*.
+
+#### Docker build OpenCV
+
+I decided to build my own docker image because I wanted to learn how to do it.
+You can find all the files I used in `sixth_iteration/docker_image_files`.
+
+To build the image you have to move in the folder where is located the *Dockerfile* with `cd sixth_iteration/docker_image_files` and run the command:
+```bash
+docker build -t myopencv:<version> .
+```
+This command will build your image. To check if everything is ok you can list all docker images with `docker images -a`, if your newly created image is listed you can go on and you can run it, the first time with:
+``` bash
+docker run -it --privileged -v share:/data --name face_detection myopencv:<version>
+```
+Or, if it's not the first time, with `docker start -i face_detection`.
+
+The image is modeled after [this one](https://hub.docker.com/r/sgtwilko/rpi-raspbian-opencv/) which has already OpenCV installed.
+My Dockerfile creates two folders. One for the code and the other one for sharing the photo. Then mooves *camera.py* and *haarcascade_frontalface_alt.xml* inside the newly created folder inside the container (`/usr/scr/ocv_face_detection`). In the end it starts the python script on startup.
+
+
+
+
