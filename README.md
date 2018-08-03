@@ -237,6 +237,9 @@ scp pi@<ip_address_raspi>:~/opencv-data/test_ocv.jpg ~/Documents/
 # Sixth Iteration
 
 In this iteration we are going to put together all the previous iterations.
+
+![scheme](docs/raspberry_scheme.png)
+
 The Idea:
 - An **Arduino sketch** will run every 15 seconds a shell command to start a docker container.
 - A Docker Container which contains **OpenCV** will run a python script on startup. This script will take a photo using a webcam, will draw in the photo a rectangle around a face (if there is one) and save the image in a docker shared volume with the name *opencv.png* if at least one face is found. After all that the container will stop.
@@ -314,6 +317,39 @@ Or, if it's not the first time, with `docker start -i face_detection`.
 The image is modeled after [this one](https://hub.docker.com/r/sgtwilko/rpi-raspbian-opencv/) which has already OpenCV installed.
 My Dockerfile creates two folders. One for the code and the other one for sharing the photo. Then mooves *camera.py* and *haarcascade_frontalface_alt.xml* inside the newly created folder inside the container (`/usr/scr/ocv_face_detection`). In the end it starts the python script on startup.
 
+# Seventh Iteration
+The goal in this iteration is to send and receive [Mqtt](https://en.wikipedia.org/wiki/MQTT) messages from an [Arduino MKR WiFi 1010](https://store.arduino.cc/arduino-mkr-wifi-1010). This Arduino has to publish Mqtt message on a topic when a pushbutton connected to it is pressed. Another Arduino (or the same, in this case) is subscribed to another topic and moves the shaft of a servomotor, which is able to open a door.
 
+The Arduino is connected via WiFi to a Raspberry Pi 3b+ which is configured as an access point. The Raspberry has to run an Mqtt Broker (I used [Mosquitto](https://mosquitto.org/)). I installed and run this broker using docker, because it was easier.
+In the end a Node-Red flow is responsible for the logic.
 
+### Arduino sketch
 
+The sketch I wrote simply connects through Wi-Fi to the Raspberry, connects to the Mqtt Broker in the docker container running on the Raspberry, publish a message on */arduino/button* topic when the pushbutton is pressed. And is subscribed to */arduino/servo* topic: when a message is published on this topic the arduino activates a servomotor, which is able to open a door. If the wi-fi connection is working the built-in led is turned on.
+
+To program, and to flash the code I used the [web editor](https://create.arduino.cc/editor).
+
+For uploading the sketch to the Arduino you can simply connect it to your pc, [install the Arduino Create plugin](https://create.arduino.cc/devices/) and follow [Third Iteration](#third-iteration) to install `arduino_button_servo_mqtt.ino`. Or you can use this [link](https://create.arduino.cc/editor/umbobaldi/3eb6a80b-6925-4069-b8a8-3953bb478f8f/preview).
+
+For the wiring part:
+
+![wiring](docs/arduino_pushbutton_servo.png)
+
+### Raspberry Pi configuration
+
+- **Access Point**: You have to configure the Raspberry so that the Arduino can connect to it. The idea is to make the onboard wireless card act like an access point and not as a client. To achieve that you can follow [this guide](https://www.raspberrypi.org/documentation/configuration/wireless/access-point.md), but it's not so easy. Personally I used [this tool](https://github.com/oblique/create_ap) which simplifies a lot the process.
+First of all you have to install all its dependencies. Then you can clone the repo and insall the script.
+To  set up the access point I used this command:
+`sudo create_ap -n --no-virt  wlan0 RaspberryPi3b+_Net RaspberryPi`
+    + `-n` Disable Internet sharing
+    + `--no-virt` Do not create virtual interface
+    + `wlan0` Is the name of the interface
+    + `RaspberryPi3b+_Net` Is the SSID of the wireless network
+    + `RaspberryPi` Is the passphrase
+
+- **Node-RED flow**: The idea is to make a flow which is able to publish on `/arduino/servo` when receives a message on another topic (`/arduino/button`). The flow must be subscribed to this second topic to achieve that. In the end you can import *flows.json* as described in [Third iteration](#third-iteration). Your flow should look like this:
+<kbd>
+  <img src="docs/flow_mqtt.png">
+</kbd>
+
+- **Mosquitto docker**: Finally we can install our Mqtt Broker. I choose Mosquitto because it's opensource, easy to set-up and simple. I installed it through a Docker container because it was easier. I used [this image](https://hub.docker.com/r/mjenz/rpi-mosquitto/), it's really lightweight (2Mb) and comes preconfigured. The installation is similar to the one described in [First Iteration](#first-iteration). To run it the fist time:`docker run -d -p 1883:1883 --name mqtt mjenz/rpi-mosquitto` and the other times: `docker start mqtt`.
