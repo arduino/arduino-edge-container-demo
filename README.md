@@ -1,59 +1,87 @@
 # First Iteration
 
-In this tutorial I'll be using [Raspbian Stretch Lite](https://www.raspberrypi.org/downloads/raspbian/ "Download Raspbian"), which is the newest version of Raspbian at the current time, installed on Raspberry Pi 3b+. I choose the Lite version because I don't need the GUI.
-It's easier to work on it if you have SSH enabled. To achieve that goal you have to create an empty file (and without extension) named **SSH** and put it in the *boot* partition of the microSD card.
+## Connect your Raspberry Pi
 
-During the first powerup I connected the raspberry pi to my pc using an ethernet cable. I configured my laptop to share the internet connection through the ethernet interface.
-In my opinion it was easier to work this way because it's more simple to obtain the ip address of the raspberry. However it's also possible to connect to the internet using wi-fi, but you have to use display and keyboard.
+In this tutorial I'll be using [Raspbian Stretch Lite](https://www.raspberrypi.org/downloads/raspbian/ "Download Raspbian"), which is the newest version of Raspbian at the current time, installed on Raspberry Pi 3b+. I chose the Lite version because I don't need the GUI.
+It's easier to work on it if you have SSH enabled. To achieve that goal you can follow [this guide](https://www.raspberrypi.org/documentation/remote-access/ssh/), or just create an empty file (without extension) named **SSH** and put it in the *boot* partition of the microSD card.
 
-If you know the Raspberry's IP, it's possible to control it (in a bash window) using SSH with the command:
-``` bash
-$ ssh pi@<ip_address_raspi>
-```
-The default log-in informations are: user: `pi`, password `raspberry`.
+Now we have to get the ip address of the raspberry pi in order to ssh into it. Basically there are two options:
+- you can connect the raspberry pi to your pc using an ethernet cable (here are two guides to do this on [Windows 10](http://www.circuitbasics.com/how-to-connect-to-a-raspberry-pi-directly-with-an-ethernet-cable/) and on [Ubuntu 16.04](https://raspberrypi.stackexchange.com/a/61004)).
+- or you can connect via wi-fi, but you have to use display and keyboard. Once you are logged in, just run the command:
+  ```bash
+  sudo ifconfig
+  ```
+  Next to the **wlan0** entry you will see **inet addr:xxx.xxx.xxx.xxx** which is the IP address of the Raspberry Pi.
 
-First of all it's mandatory to check if the GPIO libraries for Python are already installed/updated.
-``` bash
-$ sudo apt-get update
-$ sudo apt-get install python-rpi.gpio python3-rpi.gpio
-```
 
-Then I wrote two scripts in Python to check the status of a pushbutton (connected to pin 8) and to write a message on the terminal (*pushbutton.py* and *pushbutton_event.py*).
-The second script uses the events related to GPIO pins to call a function which prints the button status on the terminal.
-This is a more complex way, but the most efficient one.
-
-Let's make a destination directory to save the scripts
+Now that you know the Raspberry's IP, it's possible to control it (in a bash window) using SSH with the command:
 ```bash
-$ cd ~
-mkdir python-data
+ssh pi@<ip_address_raspi> #Substitute <ip_address_raspi> with the ip address you got before
 ```
+You will now be asked to insert the password, wich by default is `raspberry`.
 
-One easy way to transfer files (or in this case, scripts)from your pc to the Raspberry Pi is using *scp*
+
+## GPIO Libraries
+
+First of all we need to check if the GPIO libraries for Python are already installed/updated, so log in to your raspberry pi via ssh and run these commands:
 ```bash
-$ scp ~/Documents/first_iteration/pushbutton.py ~/Documents/first_iteration/pushbutton_event.py pi@<ip_address_raspi>:~/python-data/
+sudo apt-get update
+sudo apt-get install python-rpi.gpio python3-rpi.gpio
 ```
 
-If scp is not working (Permission denied) you have to change ownership of the destination folder in the raspi (`chown pi python-data`).
+If you want to test it, you can run the following Python scripts to check the status of a pushbutton connected to pin 8 and to write a message on the terminal ([pushbutton.py](https://github.com/bcmi-labs/arduino-edge-container-demo/blob/master/first_iteration/pushbutton.py) and [pushbutton_event.py](https://github.com/bcmi-labs/arduino-edge-container-demo/blob/master/first_iteration/pushbutton_event.py)).
+
+Let's create a directory to save them in the raspberry pi, so log in to it and just run:
+```bash
+mkdir ~/python-data
+```
+
+Now, transfer the two script files to the raspberry pi:
+- if you are on Linux, you can use `scp` like this from you local machine:
+  ```bash
+  # clone this repo via HTTPS to your local machine 
+  git clone https://github.com/bcmi-labs/arduino-edge-container-demo.git # or via SSH if you have set up the key (git@github.com:bcmi-labs/arduino-edge-container-demo.git)
+
+  # copy the script files to your raspberry pi via network (substitute <ip_address_raspi> with the actual ip address)
+  scp ./first_iteration/pushbutton.py ./first_iteration/pushbutton_event.py pi@<ip_address_raspi>:~/python-data
+  ```
+- if you are on Windows, you may want to use an ssh client like [PuTTY](https://www.putty.org/) or [WinScp](https://winscp.net/eng/index.php). For a more complete guide to transfer file, you can have a look at [this tutorial](https://it.cornell.edu/managed-servers/transfer-files-using-putty). 
+
+If scp is not working (Permission denied) you have to change ownership of the destination folder, so log in to the rasberr pi and run
+```
+chown pi ~/python-data
+```
 
 For all the connection I used this scheme:
 ![pin raspberry](https://www.raspberrypi-spy.co.uk/wp-content/uploads/2012/06/Raspberry-Pi-GPIO-Layout-Model-B-Plus-rotated-2700x900.png "Pin Raspberry")
 If you want further information on the GPIO pins you can read something useful [here](https://www.raspberrypi.org/documentation/usage/gpio/, "GPIO documentation")
 
-To run the scripts simply run this command:
+Finally, you can connect the push button to pin 8 and run the scripts with these commands from the raspberry pi:
 ```bash
-$ python3 ~/Documents/first_iteration/pushbutton.py
+sudo python3 ~/python-data/pushbutton.py
 ```
 or
 ```bash
-$ python3 ~/Documents/first_iteration/pushbutton_event.py
+sudo python3 ~/python-data/pushbutton_event.py
 ```
 
 ---
 # Second Iteration
 
-After installing Raspbian and testing the GPIO pins using Python and a pushbutton, let's add a bit of complexity. Let's add Docker!
+After installing Raspbian and testing the GPIO pins using Python and a pushbutton, let's add a bit of complexity. Let's add [Docker](https://www.docker.com/get-started)!
 
-Docker will be automatically installed with the Arduino Connector.
+1. First of all, we want to bind the Raspberry Pi to our Arduino user by following the Getting Started flow at https://create.arduino.cc/getting-started (if you don't have an Arduino account you can create it one now).
+![Arduino Getting Stared landing page](https://user-images.githubusercontent.com/6939054/47029664-666ea300-d16c-11e8-92b9-131aaeca135c.png)
+1. Make sure you are logged in and press **NEXT**
+![Welcome to the Raspberry Pi setup!](https://user-images.githubusercontent.com/6939054/47030598-44762000-d16e-11e8-9994-507bc200ff55.png)
+1. Go on...
+![Make sure yor Raspberry Pi is online](https://user-images.githubusercontent.com/6939054/47030723-90c16000-d16e-11e8-88c8-5a9eb98fae68.png)
+1. Select option A and enter the ip address of the Raspberry Pi
+![Select Flow](https://user-images.githubusercontent.com/6939054/47031004-37a5fc00-d16f-11e8-9103-2247fb956a0d.png)
+1. You will be prompted with a modal asking for the Raspberry Pi credentials (default are **pi** and **raspberry**)
+![screenshot from 2018-10-16 18-27-36](https://user-images.githubusercontent.com/6939054/47031874-2d84fd00-d171-11e8-92ea-e6b31556a5d4.png)
+1. Doing this will install some software on your Raspberry Pi, including the [Arduino Connector](https://github.com/arduino/arduino-connector) and Docker.
+
 
 If you don't want to use `sudo` when using `docker` you have to create a group *docker* and add your user to the latter:
 ```bash
